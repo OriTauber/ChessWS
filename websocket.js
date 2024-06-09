@@ -19,7 +19,7 @@ server.on('connection', (ws) => {
                 handleEnpassant(ws, parsedMessage);
                 break;
             case 'draw':
-                declareDraw(parsedMessage.roomId, parsedMessage.reason)    
+                declareDraw(parsedMessage.roomId, parsedMessage.reason)
         }
     });
 
