@@ -5,6 +5,7 @@
   "main": "index.js",
   "type": "commonjs",
   "scripts": {
+    "wsStart": "node websocket.js",
     "start": "concurrently \"node websocket.js\" \"node index.js\"",
     "startdev": "concurrently \"nodemon websocket.js\" \"node index.js\"",
     "test": "echo \"Error: no test specified\" && exit 1"
