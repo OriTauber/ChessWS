@@ -1,0 +1,22 @@
+{
+  "name": "backend",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "concurrently \"node websocket.js\" \"node index.js\"",
+    "startdev": "concurrently \"nodemon websocket.js\" \"node index.js\"",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^4.19.2",
+    "ws": "^8.17.0"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}
