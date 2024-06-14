@@ -13,6 +13,7 @@ server.on('connection', (ws) => {
                 handleJoin(ws, parsedMessage.roomId);
                 break;
             case 'move':
+                console.log("got movin")
                 handleMove(ws, parsedMessage);
                 break;
             case 'enpassant':
@@ -74,6 +75,8 @@ function startGame(roomId) {
         room.white.send(JSON.stringify({ type: 'start' }));
         room.black.send(JSON.stringify({ type: 'start' }));
         room.started = true;
+        room.moves = [];
+        room.movesSinceLastCaptureOrPawnMove = 0;
         room.interval = setInterval(() => updateClock(roomId), 1000);
     }
 }
@@ -123,18 +126,53 @@ function handleMove(ws, message) {
             to: message.to,
             turn: room.turn
         };
-        console.log("MOPVEFVEefafew")
+
         if (room.white && room.black) {
             room.white.send(JSON.stringify(moveMessage));
             room.black.send(JSON.stringify(moveMessage));
+            room.moves.push(message.board);
         }
-
+        checkForDraws(roomId, message);
         // Restart the clock after a move
         clearInterval(room.interval);
         room.interval = setInterval(() => updateClock(roomId), 1000);
     }
 }
+function checkForDraws(roomId, moveData) {
+    const room = rooms[roomId];
 
+    if (room) {
+        if (moveData.piece[1] === 'p' || moveData.isCapture) {
+            room.movesSinceLastCaptureOrPawnMove = 0;
+            room.moves = []
+            return;
+        }
+        room.movesSinceLastCaptureOrPawnMove = room.movesSinceLastCaptureOrPawnMove + 1;
+        if (room.movesSinceLastCaptureOrPawnMove === 50) {
+            declareDraw(roomId, "Fifty move rule");
+            return;
+        }
+        for (let move of room.moves) {
+            if (findAmountOfDuplicates(move, room.moves) >= 3) {
+                declareDraw(roomId, "Threefold repetition");
+                return;
+            }
+        }
+
+    }
+}
+function findAmountOfDuplicates(element, list) {
+    let matches = 0;
+    for (let current of list) {
+        if (compareArrays(element, current)) {
+            matches++;
+        }
+    }
+    return matches;
+}
+const compareArrays = (a, b) => {
+    return JSON.stringify(a) === JSON.stringify(b);
+};
 function handleDisconnect(ws) {
     for (const roomId in rooms) {
         const room = rooms[roomId];
