@@ -2,7 +2,7 @@ const WebSocket = require('ws');
 const server = new WebSocket.Server({ port: 8080 });
 
 const rooms = {}; // Key: roomId, Value: { white: ws, black: ws, turn: 'w', time: { w: initialTime, b: initialTime }, interval: null }
-const initialTime = 300; // 5 minutes in seconds
+const initialTime = 150; // 5 minutes in seconds
 
 server.on('connection', (ws) => {
     ws.on('message', (message) => {
@@ -13,14 +13,20 @@ server.on('connection', (ws) => {
                 handleJoin(ws, parsedMessage.roomId);
                 break;
             case 'move':
-                console.log("got movin")
                 handleMove(ws, parsedMessage);
                 break;
             case 'enpassant':
                 handleEnpassant(ws, parsedMessage);
                 break;
             case 'draw':
-                declareDraw(parsedMessage.roomId, parsedMessage.reason)
+                declareDraw(parsedMessage.roomId, parsedMessage.reason);
+                break;
+            case 'end':
+                declareGameEnd(parsedMessage.roomId, parsedMessage.winner, parsedMessage.reason);
+                break;
+            case 'chat':
+                handleChatMessages(parsedMessage.roomId, parsedMessage.message, parsedMessage.color)
+
         }
     });
 
@@ -28,6 +34,18 @@ server.on('connection', (ws) => {
         handleDisconnect(ws);
     });
 });
+function handleChatMessages(roomId, message, senderColor){
+    const room = rooms[roomId];
+
+    if (room) {
+        const opponent = senderColor === 'w' ? room.black : room.white;
+        const newMessage = `${senderColor === 'b' ? 'Black:' : 'White:'} ${message}`
+        opponent.send(JSON.stringify({
+            type: 'chat',
+            message: newMessage
+        }))
+    }
+}
 function handleEnpassant(ws, message) {
     const roomId = message.roomId;
     const room = rooms[roomId];
@@ -68,6 +86,15 @@ function declareDraw(roomId, reason = "") {
         deleteRoom(roomId);
     }
 }
+function declareGameEnd(roomId, winner, reason = "") {
+    const room = rooms[roomId];
+    if (room) {
+        room.white.send(JSON.stringify({ type: 'end', reason, winner }))
+        room.black.send(JSON.stringify({ type: 'end', reason, winner }))
+        console.log(`Game ended by ${reason ? reason : "Unknown"}! ${winner} wins!`)
+        deleteRoom(roomId);
+    }
+}
 function startGame(roomId) {
     const room = rooms[roomId];
     if (room.white && room.black) {
@@ -100,14 +127,7 @@ function updateClock(roomId) {
 
     // Check if time has run out
     if (room.time[currentTurn] <= 0) {
-        clearInterval(room.interval);
-        const endMessage = JSON.stringify({
-            type: 'end',
-            winner: currentTurn === 'w' ? 'b' : 'w'
-        });
-        room.white.send(endMessage);
-        room.black.send(endMessage);
-        rooms[roomId] = null;
+        declareGameEnd(roomId, currentTurn === 'w' ? 'b' : 'w', "time");
     }
 }
 
@@ -116,26 +136,31 @@ function handleMove(ws, message) {
     const room = rooms[roomId];
 
     if (room) {
+        
         const opponentColor = room.turn === 'w' ? 'b' : 'w';
-        room.turn = opponentColor;
+        const whiteMoved = room.turn === 'w';
+        
+
 
         const moveMessage = {
             type: 'move',
             board: message.board,
             from: message.from,
             to: message.to,
-            turn: room.turn
+            turn: opponentColor
         };
 
         if (room.white && room.black) {
-            room.white.send(JSON.stringify(moveMessage));
-            room.black.send(JSON.stringify(moveMessage));
+            room.white.send(JSON.stringify({...moveMessage, notation: whiteMoved ? '' : message.notation}));
+            room.black.send(JSON.stringify({ ...moveMessage, notation: whiteMoved ? message.notation : ''}));
             room.moves.push(message.board);
         }
         checkForDraws(roomId, message);
         // Restart the clock after a move
         clearInterval(room.interval);
+    
         room.interval = setInterval(() => updateClock(roomId), 1000);
+        room.turn = opponentColor;
     }
 }
 function checkForDraws(roomId, moveData) {
