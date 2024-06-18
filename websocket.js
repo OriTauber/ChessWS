@@ -2,7 +2,7 @@ const WebSocket = require('ws');
 const server = new WebSocket.Server({ port: 8080 });
 
 const rooms = {}; // Key: roomId, Value: { white: ws, black: ws, turn: 'w', time: { w: initialTime, b: initialTime }, interval: null }
-const initialTime = 150; // 5 minutes in seconds
+const initialTime = 300; // 5 minutes in seconds
 
 server.on('connection', (ws) => {
     ws.on('message', (message) => {
