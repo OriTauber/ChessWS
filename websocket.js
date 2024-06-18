@@ -167,7 +167,7 @@ function checkForDraws(roomId, moveData) {
     const room = rooms[roomId];
 
     if (room) {
-        if (moveData.piece[1] === 'p' || moveData.isCapture) {
+        if (moveData.piece === 'p' || moveData.isCapture) {
             room.movesSinceLastCaptureOrPawnMove = 0;
             room.moves = []
             return;
